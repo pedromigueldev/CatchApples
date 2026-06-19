@@ -23,7 +23,7 @@ var RegisterApples = (World world) =>
     float scaledWidth = apple.size.X * scale;
     float scaledHeight = apple.size.Y * scale;
     
-    for (int i = 0; i < 10000; i++)
+    for (int i = 0; i < 10000 - 1; i++)
     {
         float x = Random.Next(0, screenWidth - (int)scaledWidth);
         float y = -scaledHeight;
@@ -34,15 +34,13 @@ var RegisterApples = (World world) =>
             .AddComponent<Velocity>(world)
             .AddComponent(world, apple)
             .AddComponent<Obtainable>(world);
-    }
-    
-    WorldImpl.GetWith<Obtainable>(world, Apples);
+    }  
 };
 
 Texture2D basketTexture = Raylib.LoadTexture("assets/basket.png");
 var player = world
     .CreateEntity()
-    .AddComponent<Position>(world)
+    .AddComponent<Position>(world, new (new ((screenWidth / 2) - (basketTexture.Width * 0.5f / 2), screenHeight - basketTexture.Height)))
     .AddComponent<Velocity>(world)
     .AddComponent(world, new Rendereable(basketTexture, new (basketTexture.Width, basketTexture.Height)));
     
@@ -50,16 +48,18 @@ RegisterApples(world);
 Raylib.SetTargetFPS(60);
 
 var items = new List<World.Entity>(world.MaxValue);
+var positions = world.GetStore<Position>();
+var textures = world.GetStore<Rendereable>();
+
 var shouldReload = true;
 while (!Raylib.WindowShouldClose())
 {
     if (shouldReload)
     {
+        WorldImpl.GetWith<Obtainable>(world, Apples);
         WorldImpl.GetWith<Rendereable>(world, items).And<Position>(world);
         shouldReload = false;
     }
-    var positions = world.GetStore<Position>();
-    var textures = world.GetStore<Rendereable>();
     PositionSystem.MovePlayerWASD(player, world);
     PositionSystem.MoveApplesDown(Apples, positions);
 
@@ -81,6 +81,10 @@ public record struct Position(Vec2 Point) : Cecs.IComponent;
 public record struct Obtainable() : Cecs.IComponent;
 public record struct Velocity(Vec2 Point) : Cecs.IComponent;
 public record struct Rendereable(Texture2D Texture2D, Vec2 size) : Cecs.IComponent;
+
+public static class ObtainableSytem {
+    
+}
 
 public static class PositionSystem
 {

@@ -15,17 +15,28 @@ World world = World.New()
 List<World.Entity> Apples = [];
 var RegisterApples = (World world) =>
 {
+    var Random = new Random();
     Texture2D logoTexture = Raylib.LoadTexture("assets/C_Logo.png");
     var apple = new Rendereable(logoTexture, new (logoTexture.Width, logoTexture.Height));
-    for (int i = 0; i < 12; i++)
+    
+    float scale = 0.5f;
+    float scaledWidth = apple.size.X * scale;
+    float scaledHeight = apple.size.Y * scale;
+    
+    for (int i = 0; i < 10000; i++)
     {
+        float x = Random.Next(0, screenWidth - (int)scaledWidth);
+        float y = -scaledHeight;
+        var position = new Vec2(x, y);
+
         world.CreateEntity()
+            .AddComponent<Position>(world, new (position))
             .AddComponent<Velocity>(world)
             .AddComponent(world, apple)
             .AddComponent<Obtainable>(world);
     }
     
-    Apples = WorldImpl.GetWith<Obtainable>(world);
+    WorldImpl.GetWith<Obtainable>(world, Apples);
 };
 
 Texture2D basketTexture = Raylib.LoadTexture("assets/basket.png");
@@ -38,16 +49,24 @@ var player = world
 RegisterApples(world);
 Raylib.SetTargetFPS(60);
 
-ref var PlayerTexture =  ref WorldImpl.GetComponent<Rendereable>(player, world);
-ref var PlayerPosition = ref WorldImpl.GetComponent<Position>(player, world);
-
+var items = new List<World.Entity>(world.MaxValue);
+var shouldReload = true;
 while (!Raylib.WindowShouldClose())
 {
+    if (shouldReload)
+    {
+        WorldImpl.GetWith<Rendereable>(world, items).And<Position>(world);
+        shouldReload = false;
+    }
+    var positions = world.GetStore<Position>();
+    var textures = world.GetStore<Rendereable>();
     PositionSystem.MovePlayerWASD(player, world);
+    PositionSystem.MoveApplesDown(Apples, positions);
+
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.White);
-    
-    Raylib.DrawTexture(PlayerTexture.Texture2D, (int)PlayerPosition.Point.X, (int)PlayerPosition.Point.Y, Color.White);
+
+    RendereableSystem.DrawAllTexturesOf(positions, textures, items);
 
     Raylib.DrawFPS(0, 0);
     Raylib.EndDrawing();
@@ -72,5 +91,36 @@ public static class PositionSystem
         if (Raylib.IsKeyDown(KeyboardKey.A)) player.Point += new Vec2(-1, 0);
         if (Raylib.IsKeyDown(KeyboardKey.S)) player.Point += new Vec2(0, 1);
         if (Raylib.IsKeyDown(KeyboardKey.D)) player.Point += new Vec2(1, 0);
+    }
+
+    public static void MoveApplesDown (List<World.Entity> entity, Span<Position> store)
+    {
+        for (int i = 0; i < entity.Count; i++)
+            store[entity[i].Id].Point += new Vec2(0, 1);
+    }
+}
+
+public static class RendereableSystem
+{
+    public static void DrawTextureScaled(Texture2D texture, Vec2 position, float scale, Color color)
+    {
+        var source = new Rectangle(0, 0, texture.Width, texture.Height);
+        var dest = new Rectangle(
+            position.X, 
+            position.Y, 
+            texture.Width * scale, 
+            texture.Height * scale
+        );
+        var origin = new Vec2(0, 0);
+        
+        Raylib.DrawTexturePro(texture, source, dest, new (origin.X, origin.Y), 0.0f, color);
+    }
+
+    public static void DrawAllTexturesOf (Span<Position> positions, Span<Rendereable> textures, List<World.Entity> items)
+    {
+        foreach (var item in items)
+        {
+            DrawTextureScaled(textures[item.Id].Texture2D, positions[item.Id].Point, 0.5f, Color.White);
+        }
     }
 }

@@ -94,11 +94,8 @@ public class World
 
 public static class WorldImpl
 {
-    public static List<World.Entity> GetWith<T> (World world) where T : struct, IComponent
+    public static List<World.Entity> GetWith<T> (World world, List<World.Entity> output) where T : struct, IComponent
     {
-        var output = new List<World.Entity>();
-        output.EnsureCapacity(world.MaxValue/2);
-
         for (int i = 0; i < world.StoresCount; i++)
         {
             var store = world.Stores[i];
@@ -125,7 +122,6 @@ public static class WorldImpl
             if (store.ComponentType == typeof(T))
             {
                 var typedStore = (Store<T>)store;
-
                 for (int j = span.Count - 1; j >= 0; j--)
                 {
                     var entity = span[j];

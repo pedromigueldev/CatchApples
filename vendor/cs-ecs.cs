@@ -1,59 +1,20 @@
 namespace Cecs;
 internal interface IStore
 {
-    int MaxValue { get; }
-    List<World.Entity> Entities { get; }
     Type ComponentType { get; }
-}
 
-internal class Store<T> : IStore where T : struct, IComponent {
-    public int MaxValue { get; }
+};
+public readonly struct Store<T> : IStore where T : struct, IComponent {
+    internal readonly int[] _entityToIndex;
     public List<World.Entity> Entities { get; }
-    public Type ComponentType => typeof(T);
     public T[] Components { get; }
-    private int[] _entityToIndex;
-    
+    public Type ComponentType => typeof(T);
     public Store(int maxValue)
     {
-        MaxValue = maxValue;
         Components = new T[maxValue];
         Entities = new List<World.Entity>(maxValue);
         _entityToIndex = new int[maxValue];
         Array.Fill(_entityToIndex, -1);
-    }
-    
-    public void AddEntity (World.Entity entity, T some)
-    {
-        if (entity.Id >= MaxValue)
-            throw new InvalidOperationException("Max stores reached.");
-
-        if (_entityToIndex[entity.Id] != -1)
-            throw new InvalidOperationException(
-                $"Entity already has component {typeof(T)}");
-
-        _entityToIndex[entity.Id] = Entities.Count;
-        Entities.Add(entity);
-        Components[entity.Id] = some;
-    }
-    
-    public void RemoveEntity(World.Entity entity)
-    {
-        int index = _entityToIndex[entity.Id];
-        if (index == -1) return;
-        
-        int last = Entities.Count - 1;
-        if (index != last)
-        {
-            Entities[index] = Entities[last];
-            _entityToIndex[Entities[index].Id] = index;
-        }
-        Entities.RemoveAt(last);
-        _entityToIndex[entity.Id] = -1;
-    }
-    
-    public bool HasEntity(World.Entity entity)
-    {
-        return entity.Id < MaxValue && _entityToIndex[entity.Id] != -1;
     }
 }
 
@@ -62,10 +23,10 @@ public class World
 {
     private World () {}
     public required int MaxValue;
+    public required Components.Vec2 defaultSize;
     public required Entity[] Entities;
     private int _entitiesCount = 0;
-    internal IStore[] Stores = [];
-    public int StoresCount { get; private set; } = 0;
+    internal List<IStore> Stores = [];
     public readonly record struct Entity(int Id, int Version);
     
     public Entity CreateEntity()
@@ -81,34 +42,35 @@ public class World
 
     public World AddStore<T> () where T : struct, IComponent
     {
-        if (StoresCount >= MaxValue)
+        if (Stores.Count >= MaxValue)
             throw new InvalidOperationException("Max stores reached.");
 
-        Stores[StoresCount++] = new Store<T>(MaxValue);
+        Stores.Add(new Store<T>(MaxValue));            
         return this;
     }
 
-    public Span<T> GetStore<T>()where T : struct, IComponent
+    public Store<T> GetStore<T>()where T : struct, IComponent
     {
-        for (int i = 0; i < StoresCount; i++)
+        for (int i = 0; i < Stores.Count; i++)
         {
             var store = Stores[i];
 
             if (store.ComponentType == typeof(T))
-                return ((Store<T>)store).Components;
+                return (Store<T>)store;
         }
 
         throw new InvalidOperationException(
             $"No store for {typeof(T)} was added into the world.");
     }
 
-    public static World New(int MaxValue = 10000)
+    public static World New(Components.Vec2 defaultSize, int MaxValue = 10000)
     {
         var w = new World
         {
+            defaultSize = defaultSize,
             MaxValue = MaxValue,
             Entities = new Entity[MaxValue],
-            Stores = new IStore[MaxValue],
+            Stores = new (10),
         };
         return w;
     }
@@ -116,47 +78,20 @@ public class World
 
 public static class WorldImpl
 {
-    public static List<World.Entity> GetWith<T> (World world, List<World.Entity> output) where T : struct, IComponent
+    public static List<World.Entity> GetEntitiesWith<T> (Store<T> store) where T : struct, IComponent
     {
-        output.Clear();
-        for (int i = 0; i < world.StoresCount; i++)
-        {
-            var store = world.Stores[i];
-            if (store.ComponentType == typeof(T))
-            {
-                var typedStore = (Store<T>)store;
-
-                for (int j = 0; j < typedStore.Entities.Count; j++)
-                    output.Add(typedStore.Entities[j]);
-                        
-                return output;
-            }
-        }
-        throw new InvalidOperationException($"No store for {typeof(T)} was added into the world.");
+        return [.. store.Entities];
     }
 
-    public static List<World.Entity> And<T>(this List<World.Entity> span, World world) where T : struct, IComponent
+    public static List<World.Entity> And<T>(this List<World.Entity> span, Store<T> store) where T : struct, IComponent
     {
-        for (int i = 0; i < world.StoresCount; i++)
+        for (int j = span.Count - 1; j >= 0; j--)
         {
-            var store = world.Stores[i];
-
-            if (store.ComponentType == typeof(T))
-            {
-                var typedStore = (Store<T>)store;
-                
-                for (int j = span.Count - 1; j >= 0; j--)
-                {
-                    if (!typedStore.HasEntity(span[j]))
-                        span.RemoveSwapBack(j);
-                }
-
-                return span;
-            }
+            if (!store.HasEntity(span[j]))
+                span.RemoveSwapBack(j);
         }
 
-        throw new InvalidOperationException(
-            $"No store for {typeof(T)} was added into the world.");
+        return span;
     }
 
     public static void RemoveSwapBack<T>(this List<T> list, int index)
@@ -171,7 +106,7 @@ public static class WorldImpl
 
     public static World.Entity AddComponent <T> (this World.Entity entity, World world, T some = default) where T : struct, IComponent
     {
-        for (int i = 0; i < world.StoresCount; i++)
+        for (int i = 0; i < world.Stores.Count; i++)
         {
             var store = world.Stores[i];
             if (store.ComponentType == typeof(T))
@@ -182,27 +117,50 @@ public static class WorldImpl
         } 
         throw new InvalidOperationException($"No store for {typeof(T)} was added into the world.");
     }
+}
 
-    public static ref T GetComponent<T>(this World.Entity entity, World world)
-        where T : struct, IComponent
+public static class StoreImpl
+{
+    public static void AddEntity <T>(this Store<T> store, World.Entity entity, T some)  where T : struct, IComponent
     {
-        for (int i = 0; i < world.StoresCount; i++)
+        if (entity.Id >= store.Entities.Capacity)
+            throw new InvalidOperationException("Max stores reached.");
+
+        if (store._entityToIndex[entity.Id] != -1)
+            throw new InvalidOperationException(
+                $"Entity already has component {typeof(T)}");
+
+        store._entityToIndex[entity.Id] = store.Entities.Count;
+        store.Entities.Add(entity);
+        store.Components[entity.Id] = some;
+    }
+    
+    public static void RemoveEntity <T>(this Store<T> store, World.Entity entity) where T : struct, IComponent
+    {
+        int index = store._entityToIndex[entity.Id];
+        if (index == -1) return;
+        
+        int last = store.Entities.Count - 1;
+        if (index != last)
         {
-            var store = world.Stores[i];
-
-            if (store.ComponentType == typeof(T))
-            {
-                var typedStore = (Store<T>)store;
-
-                if (typedStore.HasEntity(entity))
-                    return ref typedStore.Components[entity.Id];
-
-                throw new InvalidOperationException(
-                    $"Entity {entity} has no component of type {typeof(T)}");
-            }
+            store.Entities[index] = store.Entities[last];
+            store._entityToIndex[store.Entities[index].Id] = index;
         }
+        store.Entities.RemoveAt(last);
+        store._entityToIndex[entity.Id] = -1;
+    }
+    
+    public static bool HasEntity <T>(this Store<T> store, World.Entity entity) where T : struct, IComponent
+    {
+        return entity.Id < store.Entities.Capacity && store._entityToIndex[entity.Id] != -1;
+    }
+
+    public static ref T GetComponent<T>(this Store<T> store, World.Entity entity) where T : struct, IComponent
+    {
+        if (store.HasEntity(entity))
+            return ref store.Components[entity.Id];
 
         throw new InvalidOperationException(
-            $"No store for {typeof(T)} was added into the world.");
+            $"Entity {entity} has no component of type {typeof(T)}");
     }
 }

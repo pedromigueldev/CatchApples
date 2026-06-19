@@ -1,130 +1,106 @@
 using Raylib_cs;
 using Cecs;
-
+using Cecs.Components;
 
 const int screenWidth = 480;
 const int screenHeight = 800;
+const float appleScale = 0.2f;
+
 Raylib.InitWindow(screenWidth, screenHeight, "Things");
 
-World world = World.New()
-    .AddStore<Position>()
-    .AddStore<Velocity>()
-    .AddStore<Rendereable>()
+World world = World.New(new (400, 400), 100_000)
+    .AddStore<Phase>()
+    .AddStore<Rendereable<Texture2D>>()
     .AddStore<Obtainable>();
 
-List<World.Entity> Apples = [];
-var RegisterApples = (World world) =>
-{
-    var Random = new Random();
-    Texture2D logoTexture = Raylib.LoadTexture("assets/C_Logo.png");
-    var apple = new Rendereable(logoTexture, new (logoTexture.Width, logoTexture.Height));
-    
-    float scale = 0.5f;
-    float scaledWidth = apple.size.X * scale;
-    float scaledHeight = apple.size.Y * scale;
-    
-    for (int i = 0; i < 10000 - 1; i++)
-    {
-        float x = Random.Next(0, screenWidth - (int)scaledWidth);
-        float y = -scaledHeight;
-        var position = new Vec2(x, y);
-
-        world.CreateEntity()
-            .AddComponent<Position>(world, new (position))
-            .AddComponent<Velocity>(world)
-            .AddComponent(world, apple)
-            .AddComponent<Obtainable>(world);
-    }  
-};
-
+Texture2D appleTexture = Raylib.LoadTexture("assets/C_Logo.png");
 Texture2D basketTexture = Raylib.LoadTexture("assets/basket.png");
-var player = world
-    .CreateEntity()
-    .AddComponent<Position>(world, new (new ((screenWidth / 2) - (basketTexture.Width * 0.5f / 2), screenHeight - basketTexture.Height)))
-    .AddComponent<Velocity>(world)
-    .AddComponent(world, new Rendereable(basketTexture, new (basketTexture.Width, basketTexture.Height)));
-    
-RegisterApples(world);
+
+var random = new Random();
+var appleComponent = new Rendereable<Texture2D>(appleTexture, new(appleTexture.Width, appleTexture.Height));
+float scaledWidth = appleTexture.Width * appleScale;
+
+for (int i = 0; i < 10_000; i++)
+{
+    var applePhase = new Phase()
+    {
+        Position = new Position(new(random.Next(0, screenWidth - (int)scaledWidth), -appleTexture.Height * appleScale))
+    };
+
+    world.CreateEntity()
+    .AddComponent<Obtainable>(world)
+    .AddComponent(world, applePhase)
+    .AddComponent(world, appleComponent);
+}
+var player = world.CreateEntity()
+    .AddComponent<Phase>(world)
+    .AddComponent<Rendereable<Texture2D>>(world, new (basketTexture, new(basketTexture.Width, basketTexture.Height)));
+var apples = WorldImpl.GetEntitiesWith(world.GetStore<Obtainable>());
+
 Raylib.SetTargetFPS(60);
 
-var items = new List<World.Entity>(world.MaxValue);
-var positions = world.GetStore<Position>();
-var textures = world.GetStore<Rendereable>();
-
-var shouldReload = true;
+var phases = world.GetStore<Phase>();
+var textures = world.GetStore<Rendereable<Texture2D>>();
+var allRenderables = WorldImpl.GetEntitiesWith(phases).And(textures);
+SetPlayer(player, world);
 while (!Raylib.WindowShouldClose())
 {
-    if (shouldReload)
-    {
-        WorldImpl.GetWith<Obtainable>(world, Apples);
-        WorldImpl.GetWith<Rendereable>(world, items).And<Position>(world);
-        shouldReload = false;
-    }
-    PositionSystem.MovePlayerWASD(player, world);
-    PositionSystem.MoveApplesDown(Apples, positions);
+    MovePlayer(player, phases);
+    MoveApples(apples, phases);
 
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.White);
-
-    RendereableSystem.DrawAllTexturesOf(positions, textures, items);
-
+    
+    foreach (var entity in allRenderables)
+    {
+        var pos = phases.GetComponent(entity);
+        var tex = textures.GetComponent(entity);
+        float scale = entity.Id == player.Id ? 1f : appleScale;
+        DrawTextureScaled(tex.Texture2D, pos.Position.Point, scale);
+    }
+    
     Raylib.DrawFPS(0, 0);
     Raylib.EndDrawing();
 }
 
-public readonly record struct Vec2 (float X, float Y)
+void SetPlayer (World.Entity entity, World world)
 {
-    public static Vec2 operator +(Vec2 a, Vec2 b) => new (a.X + b.X, a.Y + b.Y);
-    public static Vec2 operator *(Vec2 a, Vec2 b) => new (a.X * b.X, a.Y * b.Y);
-};
-public record struct Position(Vec2 Point) : Cecs.IComponent;
-public record struct Obtainable() : Cecs.IComponent;
-public record struct Velocity(Vec2 Point) : Cecs.IComponent;
-public record struct Rendereable(Texture2D Texture2D, Vec2 size) : Cecs.IComponent;
+    ref var pos = ref world.GetStore<Phase>().GetComponent(entity);
+    ref var tex = ref world.GetStore<Rendereable<Texture2D>>().GetComponent(entity);
 
-public static class ObtainableSytem {
-    
+    var center = tex.Size.X / 4;
+    var posX = (world.defaultSize.X / 2) - center;
+    pos.Position = pos.Position with
+    {
+        Point = new (posX, 0)
+    };
 }
 
-public static class PositionSystem
+void MovePlayer (World.Entity entity, Store<Phase> positions)
 {
-    public static void MovePlayerWASD (World.Entity entity, World world)
-    {
-        ref var player = ref WorldImpl.GetComponent<Position>(entity, world);
-        if (Raylib.IsKeyDown(KeyboardKey.W)) player.Point += new Vec2(0, -1);
-        if (Raylib.IsKeyDown(KeyboardKey.A)) player.Point += new Vec2(-1, 0);
-        if (Raylib.IsKeyDown(KeyboardKey.S)) player.Point += new Vec2(0, 1);
-        if (Raylib.IsKeyDown(KeyboardKey.D)) player.Point += new Vec2(1, 0);
-    }
+    ref var pos = ref positions.GetComponent(entity);
+    var point = pos.Position.Point;
+    if (Raylib.IsKeyDown(KeyboardKey.A)) point += new Vec2(-1, 0);
+    if (Raylib.IsKeyDown(KeyboardKey.D)) point += new Vec2(1, 0);
+    pos = new Phase(new Position(point), pos.Velocity); 
+}
 
-    public static void MoveApplesDown (List<World.Entity> entity, Span<Position> store)
+void MoveApples(List<World.Entity> apples, Store<Phase> store)
+{
+    for (int i = 0; i < apples.Count; i++)
     {
-        for (int i = 0; i < entity.Count; i++)
-            store[entity[i].Id].Point += new Vec2(0, 1);
+        ref var item = ref store.GetComponent(apples[i]);
+        item = item with {
+            Position = new Position(item.Position.Point + new Vec2(0, 1))
+        };
     }
 }
 
-public static class RendereableSystem
+void DrawTextureScaled(Texture2D texture, Vec2 position, float scale)
 {
-    public static void DrawTextureScaled(Texture2D texture, Vec2 position, float scale, Color color)
-    {
-        var source = new Rectangle(0, 0, texture.Width, texture.Height);
-        var dest = new Rectangle(
-            position.X, 
-            position.Y, 
-            texture.Width * scale, 
-            texture.Height * scale
-        );
-        var origin = new Vec2(0, 0);
-        
-        Raylib.DrawTexturePro(texture, source, dest, new (origin.X, origin.Y), 0.0f, color);
-    }
-
-    public static void DrawAllTexturesOf (Span<Position> positions, Span<Rendereable> textures, List<World.Entity> items)
-    {
-        foreach (var item in items)
-        {
-            DrawTextureScaled(textures[item.Id].Texture2D, positions[item.Id].Point, 0.5f, Color.White);
-        }
-    }
+    var source = new Rectangle(0, 0, texture.Width, texture.Height);
+    var dest = new Rectangle(position.X, position.Y, texture.Width * scale, texture.Height * scale);
+    Raylib.DrawTexturePro(texture, source, dest, new (0,0), 0f, Color.White);
 }
+
+public record struct Obtainable() : IComponent;

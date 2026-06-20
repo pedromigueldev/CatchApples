@@ -1,8 +1,27 @@
-using Raylib_cs;
-using Cecs;
-using CatchApple;
-using Cecs.Systems;
+#!/usr/bin/dotnet run
 
+#:sdk Microsoft.NET.Sdk
+#:property OutputPath=./output
+#:property TargetFramework=net11.0
+#:property AppendTargetFrameworkToOutputPath=false
+#:property Optimize=true
+#:property OptimizationPreference=Speed
+#:property IlcOptimizationPreference=Speed
+#:property WarningsAsErrors=nullable
+#:property PublishAot=true
+#:property ImplicitUsings=enable
+#:package Raylib-cs@8.0.0
+
+#:include vendor/**/*.cs
+#:include AppleSystem.cs
+#:include build.cs
+
+using CatchApple;
+using Cecs;
+using Cecs.Systems;
+using Raylib_cs;
+
+Build.BuildUtils.CopyDirectory("assets", Path.Combine("output", "assets"));
 const int screenWidth = 480;
 const int screenHeight = 800;
 
@@ -61,8 +80,7 @@ while (!Raylib.WindowShouldClose())
 
     foreach (var entity in WorldImpl.GetEntitiesWith(buffer, geometryStore).And(textures))
     {
-        var pos = geometryStore.GetComponent(entity);
-
+        ref var pos = ref geometryStore.GetComponent(entity);
         if (pos.Position.Point < world.defaultSize)
         {
             var tex = textures.GetComponent(entity);

@@ -22,7 +22,7 @@ public interface IComponent;
 public class World
 {
     private World () {}
-    private int MaxValue;
+    public int MaxValue { get; init; }
     private Entity[] Entities = [];
     internal List<IStore> Stores = [];
     private int _entitiesCount = 0;
@@ -79,9 +79,12 @@ public class World
 
 public static class WorldImpl
 {
-    public static List<World.Entity> GetEntitiesWith<T> (Store<T> store) where T : struct, IComponent
+    public static List<World.Entity> GetEntitiesWith<T> (this List<World.Entity> entities, Store<T> store) where T : struct, IComponent
     {
-        return [.. store.Entities];
+        entities.Clear();
+        entities.EnsureCapacity(store.Entities.Capacity);
+        entities.AddRange(store.Entities);
+        return entities;
     }
 
     public static List<World.Entity> And<T>(this List<World.Entity> span, Store<T> store) where T : struct, IComponent

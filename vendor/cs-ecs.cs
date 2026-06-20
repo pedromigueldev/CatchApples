@@ -1,3 +1,5 @@
+using Cecs.Systems;
+
 namespace Cecs;
 
 internal interface IStore
@@ -26,7 +28,7 @@ public class World
     private Entity[] Entities = [];
     internal List<IStore> Stores = [];
     private int _entitiesCount = 0;
-    public required Components.Vec2 defaultSize;
+    public required Vec2 defaultSize;
     public readonly record struct Entity(int Id, int Version);
     public Entity CreateEntity()
     {
@@ -64,7 +66,7 @@ public class World
             $"No store for {typeof(T)} was added into the world.");
     }
 
-    public static World New(Components.Vec2 defaultSize, int MaxValue = 10000)
+    public static World New(Vec2 defaultSize, int MaxValue = 10000)
     {
         var w = new World
         {

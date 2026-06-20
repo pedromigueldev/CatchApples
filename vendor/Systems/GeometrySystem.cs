@@ -1,11 +1,12 @@
-using Cecs;
-
-namespace CatchApple.Geometry;
+namespace Cecs.Systems;
 
 public readonly record struct Vec2(float X, float Y)
 {
     public static Vec2 operator +(Vec2 a, Vec2 b) => new(a.X + b.X, a.Y + b.Y);
+    public static bool operator <(Vec2 one, Vec2 other) => one.X < other.X && one.Y < other.Y;
+    public static bool operator >(Vec2 one, Vec2 other) => one.X > other.X && one.Y > other.Y;
 }
+
 public readonly record struct Position(Vec2 Point)
 {
     public static Vec2 operator +(Position a, Vec2 b) => new(a.Point.X + b.X, a.Point.Y + b.Y);

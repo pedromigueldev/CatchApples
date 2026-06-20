@@ -1,5 +1,6 @@
 
 using Cecs;
+using Cecs.Systems;
 using Raylib_cs;
 
 namespace CatchApple;
@@ -8,7 +9,7 @@ public static class AppleSystem
 {
     public static void RevictApples (
         List<World.Entity> buffer,
-        Store<Geometry.Geometry> geometryStore, 
+        Store<Geometry> geometryStore, 
         Store<Obtainable> obtainableStore,
         World world
     )
@@ -27,7 +28,7 @@ public static class AppleSystem
     public static void RecicleApples(
         List<World.Entity> buffer, 
         Texture2D appleTexture,
-        Store<Geometry.Geometry> geometryStore, 
+        Store<Geometry> geometryStore, 
         Store<Obtainable> obtainableStore, 
         World world,
         float tick,
@@ -42,18 +43,18 @@ public static class AppleSystem
         }
     }
 
-    static void GenerateApple (Texture2D appleTexture, List<World.Entity> buffer, Store<Geometry.Geometry> geometryStore, Store<Obtainable> obtainableStore, World world)
+    static void GenerateApple (Texture2D appleTexture, List<World.Entity> buffer, Store<Geometry> geometryStore, Store<Obtainable> obtainableStore, World world)
     {
         buffer.GetEntitiesWith(obtainableStore).AndNo(geometryStore);
         if (buffer.Count <= 0) return;
-        geometryStore.AddEntity(buffer[^1], new Geometry.Geometry()
+        geometryStore.AddEntity(buffer[^1], new Geometry()
         {
             Position = new (GetRandomApplePosition(appleTexture, (int)world.defaultSize.X)),
             Velocity = new (new(0, 20))
         });
     }
 
-    static Geometry.Vec2 GetRandomApplePosition (Texture2D appleTexture, int screenWidth)
+    static Vec2 GetRandomApplePosition (Texture2D appleTexture, int screenWidth)
     {
         const float appleScale = 0.2f;
         float scaledWidth = appleTexture.Width * appleScale;

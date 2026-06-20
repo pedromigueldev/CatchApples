@@ -1,9 +1,7 @@
 using Raylib_cs;
 using Cecs;
-using CatchApple.Geometry;
-using CatchApple.Render;
-using CatchApple.Player;
 using CatchApple;
+using Cecs.Systems;
 
 const int screenWidth = 480;
 const int screenHeight = 800;
@@ -64,9 +62,13 @@ while (!Raylib.WindowShouldClose())
     foreach (var entity in WorldImpl.GetEntitiesWith(buffer, geometryStore).And(textures))
     {
         var pos = geometryStore.GetComponent(entity);
-        var tex = textures.GetComponent(entity);
-        float scale = entity.Id == player.Id ? 1f : 0.2f;
-        DrawTextureScaled(tex.Texture2D, pos.Position.Point, scale);
+
+        if (pos.Position.Point < world.defaultSize)
+        {
+            var tex = textures.GetComponent(entity);
+            float scale = entity.Id == player.Id ? 1f : 0.2f;
+            DrawTextureScaled(tex.Texture2D, pos.Position.Point, scale);
+        }
     }
 
     Raylib.DrawFPS(0, 0);

@@ -1,6 +1,7 @@
 using Raylib_cs;
 using Cecs;
 using Cecs.Components;
+using CatchApple;
 
 const int screenWidth = 480;
 const int screenHeight = 800;
@@ -11,7 +12,8 @@ Raylib.InitWindow(screenWidth, screenHeight, "Things");
 World world = World.New(new(screenWidth, screenHeight), 100_000)
     .AddStore<Phase>()
     .AddStore<Rendereable<Texture2D>>()
-    .AddStore<Obtainable>();
+    .AddStore<Obtainable>()
+    .AddStore<Player>();
 
 Texture2D appleTexture = Raylib.LoadTexture("assets/C_Logo.png");
 Texture2D basketTexture = Raylib.LoadTexture("assets/basket.png");
@@ -34,12 +36,6 @@ for (int i = 0; i < 20000; i++)
         .AddComponent(world, appleComponent);
 }
 
-var player = world.CreateEntity()
-    .AddComponent<Phase>(world)
-    .AddComponent<Rendereable<Texture2D>>(world, new(basketTexture, new(basketTexture.Width, basketTexture.Height)));
-
-SetPlayer(player, world);
-
 var getenrateApple = (List<World.Entity> apples) =>
 {
     if (apples.Count <= 0) return;
@@ -50,14 +46,19 @@ var getenrateApple = (List<World.Entity> apples) =>
 };
 
 float timer = 0f;
+
+var player = PlayerSystem
+            .New(world, new(basketTexture.Width, basketTexture.Height))
+            .AddComponent<Rendereable<Texture2D>>(world, new(basketTexture, new(basketTexture.Width, basketTexture.Height)));
+            
 while (!Raylib.WindowShouldClose())
 {
     RecicleApples();
     
     var apples = WorldImpl.GetEntitiesWith(obtainable).And(phases);
     var renderables = WorldImpl.GetEntitiesWith(phases).And(textures);
+    PlayerSystem.Move(player, phases, PlayerSystem.PlayerMove.Down);
     MoveApples(apples, phases);
-    MovePlayer(player, phases);
 
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.White);
@@ -72,28 +73,6 @@ while (!Raylib.WindowShouldClose())
 
     Raylib.DrawFPS(0, 0);
     Raylib.EndDrawing();
-}
-
-void SetPlayer(World.Entity entity, World world)
-{
-    ref var pos = ref world.GetStore<Phase>().GetComponent(entity);
-    ref var tex = ref world.GetStore<Rendereable<Texture2D>>().GetComponent(entity);
-
-    var center = tex.Size.X / 4;
-    var posX = (world.defaultSize.X / 2) - center;
-    pos.Position = pos.Position with
-    {
-        Point = new(posX, 0)
-    };
-}
-
-void MovePlayer(World.Entity entity, Store<Phase> positions)
-{
-    ref var pos = ref positions.GetComponent(entity);
-    var point = pos.Position.Point;
-    if (Raylib.IsKeyDown(KeyboardKey.A)) point += new Vec2(-1, 0);
-    if (Raylib.IsKeyDown(KeyboardKey.D)) point += new Vec2(1, 0);
-    pos = new Phase(new Position(point), pos.Velocity);
 }
 
 void MoveApples(List<World.Entity> apples, Store<Phase> store)
@@ -142,7 +121,3 @@ void DrawTextureScaled(Texture2D texture, Vec2 position, float scale)
 }
 
 public record struct Obtainable() : IComponent;
-
-public record Message();
-public record Collision(World.Entity Entity) : Message;
-public record Obtain(World.Entity From, World.Entity To) : Message;

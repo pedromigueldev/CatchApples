@@ -1,10 +1,10 @@
 namespace Cecs;
+
 internal interface IStore
 {
     Type ComponentType { get; }
-
 };
-public readonly struct Store<T> : IStore where T : struct, IComponent {
+public record Store<T> : IStore where T : struct, IComponent {
     internal readonly int[] _entityToIndex;
     public List<World.Entity> Entities { get; }
     public T[] Components { get; }
@@ -22,13 +22,12 @@ public interface IComponent;
 public class World
 {
     private World () {}
-    public required int MaxValue;
-    public required Components.Vec2 defaultSize;
-    public required Entity[] Entities;
-    private int _entitiesCount = 0;
+    private int MaxValue;
+    private Entity[] Entities = [];
     internal List<IStore> Stores = [];
+    private int _entitiesCount = 0;
+    public required Components.Vec2 defaultSize;
     public readonly record struct Entity(int Id, int Version);
-    
     public Entity CreateEntity()
     {
         if (_entitiesCount >= MaxValue)
@@ -45,7 +44,9 @@ public class World
         if (Stores.Count >= MaxValue)
             throw new InvalidOperationException("Max stores reached.");
 
-        Stores.Add(new Store<T>(MaxValue));            
+        var val = new Store<T>(MaxValue);
+        Stores.Add(val);
+
         return this;
     }
 
@@ -56,7 +57,7 @@ public class World
             var store = Stores[i];
 
             if (store.ComponentType == typeof(T))
-                return (Store<T>)store;
+                return (Store<T>)Stores[i];
         }
 
         throw new InvalidOperationException(
@@ -70,7 +71,7 @@ public class World
             defaultSize = defaultSize,
             MaxValue = MaxValue,
             Entities = new Entity[MaxValue],
-            Stores = new (10),
+            Stores = new (15),
         };
         return w;
     }
@@ -88,6 +89,17 @@ public static class WorldImpl
         for (int j = span.Count - 1; j >= 0; j--)
         {
             if (!store.HasEntity(span[j]))
+                span.RemoveSwapBack(j);
+        }
+
+        return span;
+    }
+
+    public static List<World.Entity> AndNo<T>(this List<World.Entity> span, Store<T> store) where T : struct, IComponent
+    {
+        for (int j = span.Count - 1; j >= 0; j--)
+        {
+            if (store.HasEntity(span[j]))
                 span.RemoveSwapBack(j);
         }
 
@@ -141,7 +153,7 @@ public static class StoreImpl
         if (index == -1) return;
         
         int last = store.Entities.Count - 1;
-        if (index != last)
+        if (index <= last)
         {
             store.Entities[index] = store.Entities[last];
             store._entityToIndex[store.Entities[index].Id] = index;

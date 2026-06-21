@@ -12,10 +12,10 @@ public readonly record struct Position(Vec2 Point)
     public static Vec2 operator +(Position a, Vec2 b) => new(a.Point.X + b.X, a.Point.Y + b.Y);
 };
 public readonly record struct Velocity(Vec2 Point);
-public record struct Geometry(Position Position, Velocity Velocity, Vec2 Size) : IComponent;
+public record struct Geometry(Position Position, Velocity Velocity) : IComponent;
 public static class GeometrySystem
 {
-    public static void Move(Store<Geometry> store)
+    public static void Move(this Store<Geometry> store)
     {
         for (int i = 0; i < store.Entities.Count; i++)
         {;

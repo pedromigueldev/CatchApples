@@ -64,5 +64,4 @@ public static class AppleSystem
 
         return new(X, Y);
     }
-
 }

@@ -1,14 +1,12 @@
 #!/usr/bin/dotnet run
 
-#:sdk Microsoft.NET.Sdk
 #:property OutputPath=./output
 #:property TargetFramework=net11.0
 #:property AppendTargetFrameworkToOutputPath=false
-#:property Optimize=true
+//#:property Optimize=true
 #:property OptimizationPreference=Speed
 #:property IlcOptimizationPreference=Speed
 #:property WarningsAsErrors=nullable
-#:property PublishAot=true
 #:property ImplicitUsings=enable
 #:package Raylib-cs@8.0.0
 
@@ -36,7 +34,11 @@ World world = World.New(new(screenWidth, screenHeight), 100_000)
 Texture2D appleTexture = Raylib.LoadTexture("assets/C_Logo.png");
 Texture2D basketTexture = Raylib.LoadTexture("assets/basket.png");
 
-var appleComponent = new Rendereable<Texture2D>(appleTexture, new(appleTexture.Width, appleTexture.Height));
+var appleComponent = new Rendereable<Texture2D>(
+    appleTexture, 
+    new(appleTexture.Width, appleTexture.Height),
+    0.2f
+);
 
 Raylib.SetTargetFPS(60);
 
@@ -55,19 +57,17 @@ float tick = 0.2f;
 float timer = 0f;
 var player = PlayerSystem
             .New(world, new(basketTexture.Width, basketTexture.Height))
-            .AddComponent<Rendereable<Texture2D>>(world, new(basketTexture, new(basketTexture.Width, basketTexture.Height)));
+            .AddComponent<Rendereable<Texture2D>>(world, new(basketTexture, new(basketTexture.Width, basketTexture.Height), 1));
             
 var buffer = new List<World.Entity> (world.MaxValue);
 
 while (!Raylib.WindowShouldClose())
 {
-
-    PlayerSystem.PlayerMove plyerMovement = PlayerSystem.PlayerMove.Still;
-
-    if (Raylib.IsKeyDown(KeyboardKey.W)) plyerMovement = PlayerSystem.PlayerMove.Up;
-    if (Raylib.IsKeyDown(KeyboardKey.A)) plyerMovement = PlayerSystem.PlayerMove.Left;
-    if (Raylib.IsKeyDown(KeyboardKey.S)) plyerMovement = PlayerSystem.PlayerMove.Down;
-    if (Raylib.IsKeyDown(KeyboardKey.D)) plyerMovement = PlayerSystem.PlayerMove.Right;
+    PlayerSystem.PlayerMove plyerMovement = PlayerSystem.PlayerMove.None;
+    if (Raylib.IsKeyDown(KeyboardKey.W)) plyerMovement |= PlayerSystem.PlayerMove.Up;
+    if (Raylib.IsKeyDown(KeyboardKey.A)) plyerMovement |= PlayerSystem.PlayerMove.Left;
+    if (Raylib.IsKeyDown(KeyboardKey.S)) plyerMovement |= PlayerSystem.PlayerMove.Down;
+    if (Raylib.IsKeyDown(KeyboardKey.D)) plyerMovement |= PlayerSystem.PlayerMove.Right;
     
     AppleSystem.RevictApples(buffer, geometryStore, obtainableStore, world);
     AppleSystem.RecicleApples(buffer, appleTexture, geometryStore, obtainableStore, world, tick, ref timer);
@@ -78,26 +78,17 @@ while (!Raylib.WindowShouldClose())
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.White);
 
-    foreach (var entity in WorldImpl.GetEntitiesWith(buffer, geometryStore).And(textures))
-    {
-        ref var pos = ref geometryStore.GetComponent(entity);
-        if (pos.Position.Point < world.defaultSize)
-        {
-            var tex = textures.GetComponent(entity);
-            float scale = entity.Id == player.Id ? 1f : 0.2f;
-            DrawTextureScaled(tex.Texture2D, pos.Position.Point, scale);
-        }
-    }
+    RenderSystem.RenderEntities (world, buffer, geometryStore, textures, DrawTextureScaled);
 
     Raylib.DrawFPS(0, 0);
     Raylib.EndDrawing();
 }
 
-static void DrawTextureScaled(Texture2D texture, Vec2 position, float scale)
+static void DrawTextureScaled(Rendereable<Texture2D> rendereable, Position position)
 {
-    var source = new Rectangle(0, 0, texture.Width, texture.Height);
-    var dest = new Rectangle(position.X, position.Y, texture.Width * scale, texture.Height * scale);
-    Raylib.DrawTexturePro(texture, source, dest, new(0, 0), 0f, Color.White);
+    var source = new Rectangle(0, 0, rendereable.Texture2D.Width, rendereable.Texture2D.Height);
+    var dest = new Rectangle(position.Point.X, position.Point.Y, rendereable.Texture2D.Width * rendereable.Scale, rendereable.Texture2D.Height * rendereable.Scale);
+    Raylib.DrawTexturePro(rendereable.Texture2D, source, dest, new(0, 0), 0f, Color.White);
 }
 
 public record struct Obtainable() : IComponent;

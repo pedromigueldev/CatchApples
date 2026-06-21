@@ -3,7 +3,7 @@
 #:property OutputPath=./output
 #:property TargetFramework=net11.0
 #:property AppendTargetFrameworkToOutputPath=false
-//#:property Optimize=true
+//#:property Optimize=true // removes debug info
 #:property OptimizationPreference=Speed
 #:property IlcOptimizationPreference=Speed
 #:property WarningsAsErrors=nullable
@@ -14,6 +14,7 @@
 #:include AppleSystem.cs
 #:include build.cs
 
+using System.Buffers;
 using CatchApple;
 using Cecs;
 using Cecs.Systems;
@@ -29,58 +30,99 @@ World world = World.New(new(screenWidth, screenHeight), 100_000)
     .AddStore<Geometry>()
     .AddStore<Rendereable<Texture2D>>()
     .AddStore<Obtainable>()
-    .AddStore<Player>();
+    .AddStore<Player>()
+    .AddStore<Hitbox>()
+    ;
 
-Texture2D appleTexture = Raylib.LoadTexture("assets/C_Logo.png");
+
+Texture2D appleTexture = Raylib.LoadTexture("assets/apple.png");
 Texture2D basketTexture = Raylib.LoadTexture("assets/basket.png");
 
 var appleComponent = new Rendereable<Texture2D>(
     appleTexture, 
     new(appleTexture.Width, appleTexture.Height),
-    0.2f
+    1
 );
 
 Raylib.SetTargetFPS(60);
 
 var geometryStore = world.GetStore<Geometry>();
-var textures = world.GetStore<Rendereable<Texture2D>>();
+var textureStore = world.GetStore<Rendereable<Texture2D>>();
 var obtainableStore = world.GetStore<Obtainable>();
+var hitBoxStore = world.GetStore<Hitbox>();
 
-for (int i = 0; i < 10 - 1; i++)
+for (int i = 0; i < 30 - 1; i++)
 {
     world.CreateEntity()
         .AddComponent<Obtainable>(world)
-        .AddComponent(world, appleComponent);
+        .AddComponent(world, appleComponent)
+        .AddComponent<Hitbox>(world);
 }
 
-float tick = 0.2f;
+float appleSpeed = 5;
+float tick = 1f;
 float timer = 0f;
-var player = PlayerSystem
-            .New(world, new(basketTexture.Width, basketTexture.Height))
-            .AddComponent<Rendereable<Texture2D>>(world, new(basketTexture, new(basketTexture.Width, basketTexture.Height), 1));
-            
-var buffer = new List<World.Entity> (world.MaxValue);
 
+var center = basketTexture.Width / 2;
+var posX = (world.defaultSize.X / 2) - center;
+var PlayerDefGeo = new Geometry()
+{
+    Position = new Position()
+    {
+        Point = new (posX, world.defaultSize.Y - basketTexture.Height - 20)
+    }
+};
+
+var player = world.CreateEntity()
+            .AddComponent<Player>(world)
+            .AddComponent<Geometry>(world, PlayerDefGeo)
+            .AddComponent<Rendereable<Texture2D>>(world, new(basketTexture, new(basketTexture.Width, basketTexture.Height), 1))
+            .AddComponent<Hitbox>(world);
+            
+
+var buffer = new List<World.Entity> (world.MaxValue);
+var searchArea = new List<World.Entity> (world.MaxValue);
+Dictionary<World.Entity, List<World.Entity>> hitPair = new (world.MaxValue);
+for (int i = 0; i < world.MaxValue; i++)
+    hitPair.Add(new World.Entity(i, 1), []);
+
+int coughtApples = 0;
+int lostApples = 0;
 while (!Raylib.WindowShouldClose())
 {
     PlayerSystem.PlayerMove plyerMovement = PlayerSystem.PlayerMove.None;
-    if (Raylib.IsKeyDown(KeyboardKey.W)) plyerMovement |= PlayerSystem.PlayerMove.Up;
     if (Raylib.IsKeyDown(KeyboardKey.A)) plyerMovement |= PlayerSystem.PlayerMove.Left;
-    if (Raylib.IsKeyDown(KeyboardKey.S)) plyerMovement |= PlayerSystem.PlayerMove.Down;
     if (Raylib.IsKeyDown(KeyboardKey.D)) plyerMovement |= PlayerSystem.PlayerMove.Right;
-    
-    AppleSystem.RevictApples(buffer, geometryStore, obtainableStore, world);
-    AppleSystem.RecicleApples(buffer, appleTexture, geometryStore, obtainableStore, world, tick, ref timer);
-
-    GeometrySystem.Move(geometryStore);
     PlayerSystem.Move(player, geometryStore, plyerMovement);
+    
+    AppleSystem.RevictApples(buffer, geometryStore, obtainableStore, world, ref lostApples);
+    AppleSystem.RecicleApples(buffer, appleTexture, geometryStore, obtainableStore, world, tick, ref timer, ref appleSpeed);
+    
+    geometryStore.Move();
+    hitBoxStore.ScanCollisions(geometryStore, textureStore, hitPair, buffer, searchArea);
+
+    var items = hitPair[player];
+    foreach (var item in items)
+    {
+        coughtApples++;
+        geometryStore.RemoveEntity(item);
+        if (coughtApples % 10 == 0)
+        {
+            appleSpeed += 0.2f;
+            tick -= 0.05f;
+            Console.WriteLine($"{appleSpeed} {tick}");
+        }
+    }
+    hitPair[player].Clear();
 
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.White);
 
-    RenderSystem.RenderEntities (world, buffer, geometryStore, textures, DrawTextureScaled);
+    textureStore.RenderEntities (buffer, geometryStore, DrawTextureScaled);
 
     Raylib.DrawFPS(0, 0);
+    Raylib.DrawText($"APPLES COUGHT {coughtApples}", 10, 30, 24, Color.Red);
+    Raylib.DrawText($"APPLES LOST {lostApples}", 10, 50, 24, Color.Red);
     Raylib.EndDrawing();
 }
 

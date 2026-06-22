@@ -8,6 +8,7 @@ namespace CatchApple;
 public static class AppleSystem
 {
     public static int RevictApples (
+        Store<Geometry> geometryStore, 
         Store<Position> positionStore, 
         Store<Obtainable> obtainableStore,
         List<World.Entity> buffer,
@@ -22,7 +23,9 @@ public static class AppleSystem
             if (item.Point.Y > worldWSize)
             {
                 lostApples++;
-                positionStore.RemoveEntity(buffer[i]);
+                positionStore.Components[buffer[i].Id].Point = 
+                    GetRandomApplePosition(geometryStore.GetComponent(buffer[i]), worldWSize);
+                
             }
         }
 
@@ -49,17 +52,20 @@ public static class AppleSystem
         }
     }
 
-    static void GenerateApple (Store<Geometry> geometryStore, Store<Obtainable> obtainableStore, Store<Position> positionStore, Store<Velocity> velocityStore, List<World.Entity> workBuffer, int worldWSize, ref float speed)
+    public static void GenerateApple (Store<Geometry> geometryStore, Store<Obtainable> obtainableStore, Store<Position> positionStore, Store<Velocity> velocityStore, List<World.Entity> workBuffer, int worldWSize, ref float speed)
     {
-        workBuffer.GetEntitiesWith(velocityStore).And(obtainableStore).AndNo(positionStore);
+        workBuffer.GetEntitiesWith(velocityStore).And(obtainableStore).And(positionStore);
         if (workBuffer.Count <= 0) return;
 
-        positionStore.AddEntity(workBuffer[^1], new ()
+        foreach (var item in workBuffer)
         {
-            Point = GetRandomApplePosition(geometryStore.GetComponent(workBuffer[^1]), worldWSize)
-        });
-
-        velocityStore.Components[workBuffer[^1].Id].Point = new(0, speed);
+            if (obtainableStore.Components[item.Id].isCought)
+            {
+                obtainableStore.Components[item.Id].isCought = false;
+                positionStore.Components[item.Id].Point = GetRandomApplePosition(geometryStore.GetComponent(item), worldWSize);
+                velocityStore.Components[item.Id].Point = new(0, speed);
+            }
+        }
     }
 
     static Vec2 GetRandomApplePosition (Geometry geometry, int screenWidth)

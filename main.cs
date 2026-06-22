@@ -57,16 +57,20 @@ var hitBoxStore = world.GetStore<Hitbox>();
 for (int i = 0; i < 30 - 1; i++)
 {
     world.CreateEntity()
-        .AddComponent<Obtainable>(world)
+        .AddComponent<Obtainable>(world, new (true))
         .AddComponent(world, appleComponent)
         .AddComponent<Hitbox>(world)
+        .AddComponent<Position>(world, new ()
+        {
+            Point = new (0, -appleTexture.Height)
+        })
         .AddComponent<Geometry>(world, new () { Point = new(appleTexture.Width, appleTexture.Height) })
-        .AddComponent<Velocity>(world, new () { Point = new ( 0, 2) })
+        .AddComponent<Velocity>(world, new () { Point = new ( 0, 0) })
         ;
 }
 
 float appleSpeed = 5;
-float tick = 1f;
+float tick = 0.1f;
 float timer = 0f;
 
 var center = basketTexture.Width / 2;
@@ -98,20 +102,14 @@ while (!Raylib.WindowShouldClose())
     if (Raylib.IsKeyDown(KeyboardKey.D)) plyerMovement |= PlayerSystem.PlayerMove.Right;
     PlayerSystem.Move(player, velocityStore, plyerMovement, 10);
     
-    lostApples += AppleSystem.RevictApples(positionStore, obtainableStore, buffer, (int)world.defaultSize.Y);
+    lostApples += AppleSystem.RevictApples(geometryStore, positionStore, obtainableStore, buffer, (int)world.defaultSize.Y);
+    timer += Raylib.GetFrameTime();
+    if (timer >= tick)
+    {
+        timer -= tick;
+        AppleSystem.GenerateApple(geometryStore, obtainableStore, positionStore, velocityStore, buffer, (int)world.defaultSize.X, ref appleSpeed);
+    }
 
-    AppleSystem.RecicleApples(
-        buffer, 
-        positionStore,
-        velocityStore,
-        geometryStore, 
-        obtainableStore, 
-        world,
-        tick,
-        ref timer,
-        ref appleSpeed
-    );
-    
     GeometrySystem.Move(positionStore, velocityStore, buffer);
     HitBoxSystem.ScanCollisions(hitBoxStore, positionStore, geometryStore, hitPair, buffer, searchArea);
 
@@ -119,7 +117,8 @@ while (!Raylib.WindowShouldClose())
     foreach (var item in items)
     {
         coughtApples++;
-        positionStore.RemoveEntity(item);
+        ref var point = ref positionStore.GetComponent(item);
+        point = point with { Point = point.Point - new Vec2(0, screenHeight) } ;
         if (coughtApples % 10 == 0)
         {
             appleSpeed += 0.2f;
@@ -146,4 +145,4 @@ static void DrawTextureScaled(Rendereable<Texture2D> rendereable, Position posit
     Raylib.DrawTexturePro(rendereable.Texture2D, source, dest, new(0, 0), 0f, Color.White);
 }
 
-public record struct Obtainable() : IComponent;
+public record struct Obtainable(bool isCought) : IComponent;

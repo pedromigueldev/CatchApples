@@ -7,25 +7,40 @@ public readonly record struct Vec2(float X, float Y)
     public static bool operator >(Vec2 one, Vec2 other) => one.X > other.X && one.Y > other.Y;
 }
 
-public readonly record struct Position(Vec2 Point)
+public interface IHasPosition2D
 {
-    public static Vec2 operator +(Position a, Vec2 b) => new(a.Point.X + b.X, a.Point.Y + b.Y);
-};
-public readonly record struct Velocity(Vec2 Point);
-public record struct Geometry(Position Position, Velocity Velocity) : IComponent;
+    Vec2 Point { get; set; }
+}
+
+public interface IHasSize2D
+{
+    Vec2 Point { get; set; }
+}
+
+public interface IHasVelocity2D
+{
+    Vec2 Point { get; set; }
+}
+
+public record struct Position(Vec2 Point) : IComponent, IHasPosition2D;
+public record struct Velocity(Vec2 Point) : IComponent, IHasVelocity2D;
+public record struct Geometry(Vec2 Point) : IComponent, IHasSize2D;
 public static class GeometrySystem
 {
-    public static void Move(this Store<Geometry> store)
+    public static void Move <P, V>
+    (Store<P> positionStore, Store<V> velocityStore, List<World.Entity> workBuffer)
+    where P : struct, IComponent, IHasPosition2D
+    where V : struct, IComponent, IHasVelocity2D
     {
-        for (int i = 0; i < store.Entities.Count; i++)
-        {;
-            var pos = store.Components[store.Entities[i].Id].Position;
-            var acc = store.Components[store.Entities[i].Id].Velocity;
-            var newPos = new Position(pos.Point + acc.Point);
-
-            store.Components[store.Entities[i].Id] = store.Components[store.Entities[i].Id] with
+        workBuffer.GetEntitiesWith(velocityStore).And(positionStore);
+        for (int i = 0; i < workBuffer.Count; i++)
+        {
+            var pos = positionStore.Components[workBuffer[i].Id].Point;
+            var acc = velocityStore.Components[workBuffer[i].Id].Point;
+            var newPos = pos + acc;
+            positionStore.Components[workBuffer[i].Id] = positionStore.Components[workBuffer[i].Id] with
             {
-                Position = newPos
+                Point = newPos
             };
         }
     }

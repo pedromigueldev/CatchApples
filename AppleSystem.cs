@@ -7,29 +7,32 @@ namespace CatchApple;
 
 public static class AppleSystem
 {
-    public static void RevictApples (
-        List<World.Entity> buffer,
-        Store<Geometry> geometryStore, 
+    public static int RevictApples (
+        Store<Position> positionStore, 
         Store<Obtainable> obtainableStore,
-        World world,
-        ref int lostApples
+        List<World.Entity> buffer,
+        int worldWSize
     )
     {
-        buffer.GetEntitiesWith(obtainableStore).And(geometryStore);
+        int lostApples = 0;
+        buffer.GetEntitiesWith(obtainableStore).And(positionStore);
         for (int i = 0; i < buffer.Count; i++)
         {
-            ref var item = ref geometryStore.GetComponent(buffer[i]);
-            if (item.Position.Point.Y > world.defaultSize.Y)
+            ref var item = ref positionStore.Components[buffer[i].Id];
+            if (item.Point.Y > worldWSize)
             {
                 lostApples++;
-                geometryStore.RemoveEntity(buffer[i]);
+                positionStore.RemoveEntity(buffer[i]);
             }
         }
+
+        return lostApples;
     }
 
     public static void RecicleApples(
         List<World.Entity> buffer, 
-        Texture2D appleTexture,
+        Store<Position> positionStore,
+        Store<Velocity> velocityStore,
         Store<Geometry> geometryStore, 
         Store<Obtainable> obtainableStore, 
         World world,
@@ -42,28 +45,28 @@ public static class AppleSystem
         if (timer >= tick)
         {
             timer -= tick;
-            GenerateApple(appleTexture,buffer, geometryStore, obtainableStore, world, ref speed);
+            GenerateApple(geometryStore, obtainableStore, positionStore, velocityStore, buffer, (int)world.defaultSize.X, ref speed);
         }
     }
 
-    static void GenerateApple (Texture2D appleTexture, List<World.Entity> buffer, Store<Geometry> geometryStore, Store<Obtainable> obtainableStore, World world, ref float speed)
+    static void GenerateApple (Store<Geometry> geometryStore, Store<Obtainable> obtainableStore, Store<Position> positionStore, Store<Velocity> velocityStore, List<World.Entity> workBuffer, int worldWSize, ref float speed)
     {
-        buffer.GetEntitiesWith(obtainableStore).AndNo(geometryStore);
-        if (buffer.Count <= 0) return;
-        geometryStore.AddEntity(buffer[^1], new Geometry()
+        workBuffer.GetEntitiesWith(velocityStore).And(obtainableStore).AndNo(positionStore);
+        if (workBuffer.Count <= 0) return;
+
+        positionStore.AddEntity(workBuffer[^1], new ()
         {
-            Position = new (GetRandomApplePosition(appleTexture, (int)world.defaultSize.X)),
-            Velocity = new (new(0, speed))
+            Point = GetRandomApplePosition(geometryStore.GetComponent(workBuffer[^1]), worldWSize)
         });
+
+        velocityStore.Components[workBuffer[^1].Id].Point = new(0, speed);
     }
 
-    static Vec2 GetRandomApplePosition (Texture2D appleTexture, int screenWidth)
+    static Vec2 GetRandomApplePosition (Geometry geometry, int screenWidth)
     {
-        const float appleScale = 0.2f;
-        float scaledWidth = appleTexture.Width;
-
+        float scaledWidth = geometry.Point.X;
         var X = Random.Shared.Next(0, screenWidth - (int)scaledWidth);
-        var Y = -appleTexture.Height * appleScale;
+        var Y = -geometry.Point.Y;
 
         return new(X, Y);
     }

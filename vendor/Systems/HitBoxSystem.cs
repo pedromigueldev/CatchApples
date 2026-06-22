@@ -1,63 +1,62 @@
 namespace Cecs.Systems;
 public record struct Hitbox() : IComponent;
 public static class HitBoxSystem {
-    public static void  ScanCollisions <T>(this Store<Hitbox> hitBoxStore, Store<Geometry> geometryStore, Store<Rendereable<T>> textures, Dictionary<World.Entity, List<World.Entity>> hitPair, List<World.Entity> buffer, List<World.Entity> searchArea)
+    public static void  ScanCollisions <P, G>
+    (this Store<Hitbox> hitBoxStore, Store<P> positionStore, Store<G> geometryStore, Dictionary<World.Entity, List<World.Entity>> hitPair, List<World.Entity> buffer, List<World.Entity> searchArea)
+    where P : struct, IComponent, IHasPosition2D
+    where G : struct, IComponent, IHasSize2D
     {
-        var itemsWithHitBox = buffer.GetEntitiesWith(hitBoxStore).And(geometryStore).And(textures);
+        var itemsWithHitBox = buffer.GetEntitiesWith(hitBoxStore).And(positionStore).And(geometryStore);
         for (int i = 0; i < itemsWithHitBox.Count; i++)
         {
             searchArea.Clear();
             var item = itemsWithHitBox[i];
             hitPair[item].EnsureCapacity(itemsWithHitBox.Count);
 
-            var itemPosition = geometryStore.Components[item.Id].Position;
-            var itemSize = textures.Components[item.Id].Size;
+            var itemPosition = positionStore.Components[item.Id].Point;
+            var itemSize = geometryStore.Components[item.Id].Point;
 
             for (int j = 0; j < itemsWithHitBox.Count; j++)
             {
                 var itemSearched = itemsWithHitBox[j];
                 if (itemSearched == item) continue;
 
-                var itemSearchedPosition = geometryStore.Components[itemSearched.Id].Position;
-                var itemSearchedSize = textures.Components[itemSearched.Id].Size;
+                var itemSearchedPosition = positionStore.Components[itemSearched.Id].Point;
+                var itemSearchedSize = geometryStore.Components[itemSearched.Id].Point;
 
-                var searchUpperY = itemSearchedPosition.Point.Y;
-                var searchLowerY = itemSearchedPosition.Point.Y + itemSearchedSize.Y;
-                var itemUpperY = itemPosition.Point.Y;
-                var itemLowerY = itemPosition.Point.Y + itemSize.Y;
+                var searchUpperY = itemSearchedPosition.Y;
+                var searchLowerY = itemSearchedPosition.Y + itemSearchedSize.Y;
+                var itemUpperY = itemPosition.Y;
+                var itemLowerY = itemPosition.Y + itemSize.Y;
 
-                var searchUpperX = itemSearchedPosition.Point.X;
-                var searchLowerX = itemSearchedPosition.Point.X + itemSearchedSize.X;
-                var itemUpperX = itemPosition.Point.X;
-                var itemLowerX = itemPosition.Point.X + itemSize.X;
+                var searchUpperX = itemSearchedPosition.X;
+                var searchLowerX = itemSearchedPosition.X + itemSearchedSize.X;
+                var itemUpperX = itemPosition.X;
+                var itemLowerX = itemPosition.X + itemSize.X;
 
                 if (searchLowerY >= itemUpperY && searchUpperY <= itemLowerY || searchLowerX >= itemUpperX && searchUpperX <= itemLowerX ) searchArea.Add(itemSearched);
             }
 
             for (int j = 0; j < searchArea.Count; j++)
             {
-                var itemSearchedPosition = geometryStore.Components[searchArea[j].Id].Position;
-                var itemSearchedSize = textures.Components[searchArea[j].Id].Size;
+                var itemSearchedPosition = positionStore.Components[searchArea[j].Id].Point;
+                var itemSearchedSize = geometryStore.Components[searchArea[j].Id].Point;
 
-                var searchUpperY = itemSearchedPosition.Point.Y;
-                var searchLowerY = itemSearchedPosition.Point.Y + itemSearchedSize.Y;
-                var searchUpperX = itemSearchedPosition.Point.X;
-                var searchLowerX = itemSearchedPosition.Point.X + itemSearchedSize.X;
+                var leftA = itemPosition.X;
+                var rightA = itemPosition.X + itemSize.X;
+                var topA = itemPosition.Y;
+                var bottomA = itemPosition.Y + itemSize.Y;
 
-                var searchUpperBouonds = new Vec2 (searchUpperX, searchUpperY);
-                var searchLowerBouonds = new Vec2 (searchLowerX, searchLowerY);
-
-                var itemUpperX = itemPosition.Point.X;
-                var itemLowerX = itemPosition.Point.X + itemSize.X;
-                var itemUpperY = itemPosition.Point.Y;
-                var itemLowerY = itemPosition.Point.Y + itemSize.Y;
-
-                var itemUpperBouonds = new Vec2 (itemUpperX, itemUpperY);
-                var itemLowerBouonds = new Vec2 (itemLowerX, itemLowerY);
+                var leftB = itemSearchedPosition.X;
+                var rightB = itemSearchedPosition.X + itemSearchedSize.X;
+                var topB = itemSearchedPosition.Y;
+                var bottomB = itemSearchedPosition.Y + itemSearchedSize.Y;
 
                 if (
-                    (searchLowerBouonds > itemUpperBouonds && searchLowerBouonds < itemLowerBouonds) ||
-                    (searchUpperBouonds > itemUpperBouonds && searchUpperBouonds < itemLowerBouonds)
+                    leftA < rightB &&
+                    rightA > leftB &&
+                    topA < bottomB &&
+                    bottomA > topB
                 )
                 {
                     hitPair[item].Add(searchArea[j]);

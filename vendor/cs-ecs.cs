@@ -84,7 +84,7 @@ public static class WorldImpl
     public static List<World.Entity> GetEntitiesWith<T> (this List<World.Entity> entities, Store<T> store) where T : struct, IComponent
     {
         entities.Clear();
-        entities.EnsureCapacity(store.Entities.Capacity);
+        entities.EnsureCapacity(store.Entities.Count);
         entities.AddRange(store.Entities);
         return entities;
     }

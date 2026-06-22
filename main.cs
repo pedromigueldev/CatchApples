@@ -14,7 +14,6 @@
 #:include AppleSystem.cs
 #:include build.cs
 
-using System.Buffers;
 using CatchApple;
 using Cecs;
 using Cecs.Systems;
@@ -28,6 +27,8 @@ Raylib.InitWindow(screenWidth, screenHeight, "Things");
 
 World world = World.New(new(screenWidth, screenHeight), 100_000)
     .AddStore<Geometry>()
+    .AddStore<Velocity>()
+    .AddStore<Position>()
     .AddStore<Rendereable<Texture2D>>()
     .AddStore<Obtainable>()
     .AddStore<Player>()
@@ -47,6 +48,8 @@ var appleComponent = new Rendereable<Texture2D>(
 Raylib.SetTargetFPS(60);
 
 var geometryStore = world.GetStore<Geometry>();
+var velocityStore = world.GetStore<Velocity>();
+var positionStore = world.GetStore<Position>();
 var textureStore = world.GetStore<Rendereable<Texture2D>>();
 var obtainableStore = world.GetStore<Obtainable>();
 var hitBoxStore = world.GetStore<Hitbox>();
@@ -56,7 +59,10 @@ for (int i = 0; i < 30 - 1; i++)
     world.CreateEntity()
         .AddComponent<Obtainable>(world)
         .AddComponent(world, appleComponent)
-        .AddComponent<Hitbox>(world);
+        .AddComponent<Hitbox>(world)
+        .AddComponent<Geometry>(world, new () { Point = new(appleTexture.Width, appleTexture.Height) })
+        .AddComponent<Velocity>(world, new () { Point = new ( 0, 2) })
+        ;
 }
 
 float appleSpeed = 5;
@@ -65,17 +71,14 @@ float timer = 0f;
 
 var center = basketTexture.Width / 2;
 var posX = (world.defaultSize.X / 2) - center;
-var PlayerDefGeo = new Geometry()
-{
-    Position = new Position()
-    {
-        Point = new (posX, world.defaultSize.Y - basketTexture.Height - 20)
-    }
-};
-
 var player = world.CreateEntity()
             .AddComponent<Player>(world)
-            .AddComponent<Geometry>(world, PlayerDefGeo)
+            .AddComponent<Geometry>(world, new () { Point = new (basketTexture.Width, basketTexture.Height) })
+            .AddComponent<Position>(world, new ()
+            {
+                Point = new (posX, world.defaultSize.Y - basketTexture.Height - 20)
+            })
+            .AddComponent<Velocity>(world, new ())
             .AddComponent<Rendereable<Texture2D>>(world, new(basketTexture, new(basketTexture.Width, basketTexture.Height), 1))
             .AddComponent<Hitbox>(world);
             
@@ -93,24 +96,34 @@ while (!Raylib.WindowShouldClose())
     PlayerSystem.PlayerMove plyerMovement = PlayerSystem.PlayerMove.None;
     if (Raylib.IsKeyDown(KeyboardKey.A)) plyerMovement |= PlayerSystem.PlayerMove.Left;
     if (Raylib.IsKeyDown(KeyboardKey.D)) plyerMovement |= PlayerSystem.PlayerMove.Right;
-    PlayerSystem.Move(player, geometryStore, plyerMovement);
+    PlayerSystem.Move(player, velocityStore, plyerMovement, 10);
     
-    AppleSystem.RevictApples(buffer, geometryStore, obtainableStore, world, ref lostApples);
-    AppleSystem.RecicleApples(buffer, appleTexture, geometryStore, obtainableStore, world, tick, ref timer, ref appleSpeed);
+    lostApples += AppleSystem.RevictApples(positionStore, obtainableStore, buffer, (int)world.defaultSize.Y);
+
+    AppleSystem.RecicleApples(
+        buffer, 
+        positionStore,
+        velocityStore,
+        geometryStore, 
+        obtainableStore, 
+        world,
+        tick,
+        ref timer,
+        ref appleSpeed
+    );
     
-    geometryStore.Move();
-    hitBoxStore.ScanCollisions(geometryStore, textureStore, hitPair, buffer, searchArea);
+    GeometrySystem.Move(positionStore, velocityStore, buffer);
+    HitBoxSystem.ScanCollisions(hitBoxStore, positionStore, geometryStore, hitPair, buffer, searchArea);
 
     var items = hitPair[player];
     foreach (var item in items)
     {
         coughtApples++;
-        geometryStore.RemoveEntity(item);
+        positionStore.RemoveEntity(item);
         if (coughtApples % 10 == 0)
         {
             appleSpeed += 0.2f;
             tick -= 0.05f;
-            Console.WriteLine($"{appleSpeed} {tick}");
         }
     }
     hitPair[player].Clear();
@@ -118,7 +131,7 @@ while (!Raylib.WindowShouldClose())
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.White);
 
-    textureStore.RenderEntities (buffer, geometryStore, DrawTextureScaled);
+    RenderSystem.RenderEntities (textureStore, positionStore, DrawTextureScaled, buffer);
 
     Raylib.DrawFPS(0, 0);
     Raylib.DrawText($"APPLES COUGHT {coughtApples}", 10, 30, 24, Color.Red);

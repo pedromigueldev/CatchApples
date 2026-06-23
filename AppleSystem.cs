@@ -8,15 +8,14 @@ namespace CatchApple;
 public static class AppleSystem
 {
     public static int RevictApples (
-        (Store<Obtainable>, Store<Position>, Store<Geometry>, Store<Velocity>) appleArchetype,
+        Store<Obtainable> obtainableStore, Store<Position> positionStore, Store<Geometry> geometryStore,
         Store<Out> outStore,
         List<World.Entity> buffer,
         int worldWSize
     )
     {
-        var (obtainableStore, positionStore, geometryStore, _) = appleArchetype;
-        int lostApples = 0;
         buffer.GetEntitiesWith(obtainableStore).AndNo(outStore);
+        int lostApples = 0;
         for (int i = 0; i < buffer.Count; i++)
         {
             ref var item = ref positionStore.Components[buffer[i].Id];
@@ -32,13 +31,16 @@ public static class AppleSystem
         return lostApples;
     }
 
-    public static void GenerateApple (
-        (Store<Obtainable>, Store<Position>, Store<Geometry>, Store<Velocity>) appleArchetype, Store<Out> outStore,
-        List<World.Entity> workBuffer, int worldWSize, ref float speed)
+    public static void GenerateApple (Store<Obtainable> obtainableStore,
+                                      Store<Position> positionStore,
+                                      Store<Geometry> geometryStore,
+                                      Store<Velocity> velocityStore,
+                                      Store<Out> outStore,
+                                      List<World.Entity> workBuffer,
+                                      int worldWSize,
+                                      ref float speed)
     {
-        var (obtainableStore, positionStore, geometryStore, velocityStore) = appleArchetype;
         workBuffer.GetEntitiesWith(obtainableStore).And(outStore);
-
         if (workBuffer.Count <= 0) return;
         positionStore.Components[workBuffer[^1].Id].Point = GetRandomApplePosition(geometryStore.GetComponent(workBuffer[^1]), worldWSize);
         velocityStore.Components[workBuffer[^1].Id].Point = new(0, speed);

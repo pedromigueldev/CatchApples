@@ -56,18 +56,19 @@ var textureStore = world.GetStore<Rendereable<Texture2D>>();
 var obtainableStore = world.GetStore<Obtainable>();
 var hitBoxStore = world.GetStore<Hitbox>();
 var outStore = world.GetStore<Out>();
-var appleArchetype = world.GetArchetypeOf<Obtainable, Position, Geometry, Velocity>();
 
 for (int i = 0; i < 30 - 1; i++)
 {
     var appleGeo = new Geometry () { Point = new(appleTexture.Width, appleTexture.Height) };
     
     var apple = world.CreateEntity()
-        .AddComponent<Rendereable<Texture2D>>(world, appleComponent)
+        .AddComponent<Obtainable>(world)
+        .AddComponent(world, appleComponent)
         .AddComponent<Hitbox>(world)
-        .AddComponent<Out>(world);
-
-    appleArchetype.AddEntity(apple, new (true), new (), appleGeo, new () { Point = new ( 0, 0) });
+        .AddComponent<Out>(world)
+        .AddComponent(world, appleGeo)
+        .AddComponent<Velocity>(world)
+        .AddComponent<Position>(world);
 }
 
 float appleSpeed = 5;
@@ -103,19 +104,17 @@ while (!Raylib.WindowShouldClose())
     if (Raylib.IsKeyDown(KeyboardKey.D)) plyerMovement |= PlayerSystem.PlayerMove.Right;
     PlayerSystem.Move(player, velocityStore, plyerMovement, 10);
     
-    lostApples += AppleSystem.RevictApples(appleArchetype, outStore, buffer, (int)world.defaultSize.Y);
+    lostApples += AppleSystem.RevictApples(obtainableStore, positionStore, geometryStore, outStore, buffer, (int)world.defaultSize.Y);
     timer += Raylib.GetFrameTime();
     if (timer >= tick)
     {
         timer -= tick;
-        AppleSystem.GenerateApple(appleArchetype, outStore, buffer, (int)world.defaultSize.X, ref appleSpeed);
+        AppleSystem.GenerateApple(obtainableStore, positionStore, geometryStore, velocityStore, outStore, buffer, (int)world.defaultSize.X, ref appleSpeed);
     }
 
     GeometrySystem.Move(positionStore, velocityStore, buffer);
     HitBoxSystem.ScanCollisions(hitBoxStore, positionStore, geometryStore, hitPair, buffer, searchArea);
-
-    var items = hitPair[player];
-    foreach (var item in items)
+    foreach (var item in hitPair[player])
     {
         coughtApples++;
         ref var point = ref positionStore.GetComponent(item);
@@ -147,5 +146,5 @@ static void DrawTextureScaled(Rendereable<Texture2D> rendereable, Position posit
     Raylib.DrawTexturePro(rendereable.Texture2D, source, dest, new(0, 0), 0f, Color.White);
 }
 
-public record struct Obtainable(bool isCought) : IComponent;
+public record struct Obtainable() : IComponent;
 public record struct Out () : IComponent;

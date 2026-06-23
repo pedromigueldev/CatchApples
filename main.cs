@@ -33,6 +33,7 @@ World world = World.New(new(screenWidth, screenHeight), 100_000)
     .AddStore<Obtainable>()
     .AddStore<Player>()
     .AddStore<Hitbox>()
+    .AddStore<Out>()
     ;
 
 
@@ -47,26 +48,26 @@ var appleComponent = new Rendereable<Texture2D>(
 
 Raylib.SetTargetFPS(60);
 
+
 var geometryStore = world.GetStore<Geometry>();
 var velocityStore = world.GetStore<Velocity>();
 var positionStore = world.GetStore<Position>();
 var textureStore = world.GetStore<Rendereable<Texture2D>>();
 var obtainableStore = world.GetStore<Obtainable>();
 var hitBoxStore = world.GetStore<Hitbox>();
+var outStore = world.GetStore<Out>();
+var appleArchetype = world.GetArchetypeOf<Obtainable, Position, Geometry, Velocity>();
 
 for (int i = 0; i < 30 - 1; i++)
 {
-    world.CreateEntity()
-        .AddComponent<Obtainable>(world, new (true))
-        .AddComponent(world, appleComponent)
+    var appleGeo = new Geometry () { Point = new(appleTexture.Width, appleTexture.Height) };
+    
+    var apple = world.CreateEntity()
+        .AddComponent<Rendereable<Texture2D>>(world, appleComponent)
         .AddComponent<Hitbox>(world)
-        .AddComponent<Position>(world, new ()
-        {
-            Point = new (0, -appleTexture.Height)
-        })
-        .AddComponent<Geometry>(world, new () { Point = new(appleTexture.Width, appleTexture.Height) })
-        .AddComponent<Velocity>(world, new () { Point = new ( 0, 0) })
-        ;
+        .AddComponent<Out>(world);
+
+    appleArchetype.AddEntity(apple, new (true), new (), appleGeo, new () { Point = new ( 0, 0) });
 }
 
 float appleSpeed = 5;
@@ -102,12 +103,12 @@ while (!Raylib.WindowShouldClose())
     if (Raylib.IsKeyDown(KeyboardKey.D)) plyerMovement |= PlayerSystem.PlayerMove.Right;
     PlayerSystem.Move(player, velocityStore, plyerMovement, 10);
     
-    lostApples += AppleSystem.RevictApples(geometryStore, positionStore, obtainableStore, buffer, (int)world.defaultSize.Y);
+    lostApples += AppleSystem.RevictApples(appleArchetype, outStore, buffer, (int)world.defaultSize.Y);
     timer += Raylib.GetFrameTime();
     if (timer >= tick)
     {
         timer -= tick;
-        AppleSystem.GenerateApple(geometryStore, obtainableStore, positionStore, velocityStore, buffer, (int)world.defaultSize.X, ref appleSpeed);
+        AppleSystem.GenerateApple(appleArchetype, outStore, buffer, (int)world.defaultSize.X, ref appleSpeed);
     }
 
     GeometrySystem.Move(positionStore, velocityStore, buffer);
@@ -118,7 +119,8 @@ while (!Raylib.WindowShouldClose())
     {
         coughtApples++;
         ref var point = ref positionStore.GetComponent(item);
-        point = point with { Point = point.Point - new Vec2(0, screenHeight) } ;
+        point = point with { Point = point.Point - new Vec2(0, screenHeight + appleTexture.Height) };
+        outStore.AddEntity(item, new ());
         if (coughtApples % 10 == 0)
         {
             appleSpeed += 0.2f;
@@ -146,3 +148,4 @@ static void DrawTextureScaled(Rendereable<Texture2D> rendereable, Position posit
 }
 
 public record struct Obtainable(bool isCought) : IComponent;
+public record struct Out () : IComponent;

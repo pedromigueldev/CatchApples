@@ -89,6 +89,36 @@ public static class WorldImpl
         return entities;
     }
 
+    public static List<World.Entity> WithNo<T>(this List<World.Entity> buffer, Store<T> store) where T : struct, IComponent
+    {
+        buffer.Clear();
+        buffer.EnsureCapacity(store.Entities.Count);
+        buffer.AddRange(store.Entities);
+        
+        for (int j = buffer.Count - 1; j >= 0; j--)
+        {
+            if (store.HasEntity(buffer[j]))
+                buffer.RemoveSwapBack(j);
+        }
+
+        return buffer;
+    }
+
+    public static List<World.Entity> With<T>(this List<World.Entity> buffer, Store<T> store) where T : struct, IComponent
+    {
+        buffer.Clear();
+        buffer.EnsureCapacity(store.Entities.Count);
+        buffer.AddRange(store.Entities);
+        
+        for (int j = buffer.Count - 1; j >= 0; j--)
+        {
+            if (!store.HasEntity(buffer[j]))
+                buffer.RemoveSwapBack(j);
+        }
+
+        return buffer;
+    }
+
     public static List<World.Entity> And<T>(this List<World.Entity> span, Store<T> store) where T : struct, IComponent
     {
         for (int j = span.Count - 1; j >= 0; j--)

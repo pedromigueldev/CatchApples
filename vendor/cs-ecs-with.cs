@@ -8,6 +8,7 @@ internal interface IArchetpe
 {
     bool HasEntity(Entity entity);
 };
+
 public record Archetype<CT> (World World) : IArchetpe where CT : struct, ITuple
 {
     internal readonly List<Entity> Entities = new (World.MaxValue); 

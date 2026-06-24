@@ -1,37 +1,34 @@
 #!/usr/bin/dotnet run
 
+#:package Raylib-cs@8.0.0
 #:property OutputPath=./output
 #:property TargetFramework=net11.0
 #:property AppendTargetFrameworkToOutputPath=false
-//#:property Optimize=true // removes debug info
-#:property OptimizationPreference=Speed
 #:property IlcOptimizationPreference=Speed
 #:property WarningsAsErrors=nullable
 #:property ImplicitUsings=enable
-#:package Raylib-cs@8.0.0
+#:property OptimizationPreference=Speed
+//#:property Optimize=true // removes debug info
 
 #:include vendor/**/*.cs
-#:include AppleSystem.cs
+#:include systems/*.cs
 #:include build.cs
 
 using CatchApple;
 using Cecs;
-using Cecs.Systems;
 using Raylib_cs;
 
-public readonly record struct Obtainable() : IComponent;
-public readonly record struct Out() : IComponent;
 internal static class Program
 {
     const int screenWidth = 480;
     const int screenHeight = 800;
-    static World world = new World(new(screenWidth, screenHeight), 100_000)
+    static readonly World world = new World(new(screenWidth, screenHeight), 100_000)
         .AddStore<Obtainable>()
         .AddStore<Player>()
         .AddStore<Hitbox>()
         .AddStore<Out>()
         .AddStore<Velocity>()
-        .AddArchetype<(Position, float, Texture2D)>() // renderable (scale, texture)
+        .AddArchetype<(Texture2D, Position, float)>()
     ;
     
     [STAThread]
@@ -42,16 +39,16 @@ internal static class Program
         Texture2D appleTexture = Raylib.LoadTexture("assets/apple.png");
         Texture2D basketTexture = Raylib.LoadTexture("assets/basket.png");
 
-        var Renderable = world.GetArchetype<(Position, float, Texture2D)>();
+        var Renderable = world.GetArchetype<(Texture2D, Position, float)>();
 
         var apple = world.CreateEntity()
-                .AddEntityWith(Renderable, (new (new (10,10)), 1f, appleTexture))
+                .AddEntityWith(Renderable, (appleTexture, new (new (10,10)), 1f))
                 .AddEntityWith(world.GetStore<Obtainable>())
                 .AddEntityWith(world.GetStore<Hitbox>())
                 .AddEntityWith(world.GetStore<Out>());
 
         var player = world.CreateEntity()
-                .AddEntityWith(Renderable, (new (new (100,100)), 1f, basketTexture))
+                .AddEntityWith(Renderable, (basketTexture, new (new (100,100)), 1f))
                 .AddEntityWith(world.GetStore<Hitbox>());
 
         while (!Raylib.WindowShouldClose())

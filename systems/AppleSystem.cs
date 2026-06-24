@@ -1,10 +1,10 @@
 
+
 using Cecs;
-using Cecs.Systems;
-using Raylib_cs;
 
 namespace CatchApple;
-
+public readonly record struct Obtainable() : IComponent;
+public readonly record struct Out() : IComponent;
 public static class AppleSystem
 {
     public static int RevictApples (

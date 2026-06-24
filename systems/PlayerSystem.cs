@@ -1,4 +1,6 @@
-namespace Cecs.Systems;
+using Cecs;
+
+namespace CatchApple;
 public record struct Player() : IComponent;
 public static class PlayerSystem
 {

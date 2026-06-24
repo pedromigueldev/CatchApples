@@ -1,8 +1,8 @@
+using System.Numerics;
 using System.Runtime.CompilerServices;
-using Cecs.Systems;
 namespace Cecs;
 public readonly record struct Entity(int Id, int Version);
-public record World (Vec2 DefaultSize, int MaxValue = 10000)
+public record World (Vector2 DefaultSize, int MaxValue = 10000)
 {
     internal readonly List<Entity> Entities = new (MaxValue);
     internal List<IStore> Stores = new (15);

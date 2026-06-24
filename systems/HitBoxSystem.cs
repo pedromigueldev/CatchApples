@@ -1,4 +1,6 @@
-namespace Cecs.Systems;
+using Cecs;
+
+namespace CatchApple;
 public record struct Hitbox() : IComponent;
 public static class HitBoxSystem {
     public static void  ScanCollisions <P, G>

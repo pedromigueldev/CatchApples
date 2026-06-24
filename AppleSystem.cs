@@ -10,7 +10,7 @@ public static class AppleSystem
     public static int RevictApples (
         Store<Obtainable> obtainableStore, Store<Position> positionStore, Store<Geometry> geometryStore,
         Store<Out> outStore,
-        List<World.Entity> buffer,
+        List<Entity> buffer,
         int worldWSize
     )
     {
@@ -36,7 +36,7 @@ public static class AppleSystem
                                       Store<Geometry> geometryStore,
                                       Store<Velocity> velocityStore,
                                       Store<Out> outStore,
-                                      List<World.Entity> workBuffer,
+                                      List<Entity> workBuffer,
                                       int worldWSize,
                                       ref float speed)
     {

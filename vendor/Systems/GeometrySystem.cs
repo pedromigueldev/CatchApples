@@ -29,7 +29,7 @@ public record struct Geometry(Vec2 Point) : IComponent, IHasSize2D;
 public static class GeometrySystem
 {
     public static void Move <P, V>
-    (Store<P> positionStore, Store<V> velocityStore, List<World.Entity> workBuffer)
+    (Store<P> positionStore, Store<V> velocityStore, List<Entity> workBuffer)
     where P : struct, IComponent, IHasPosition2D
     where V : struct, IComponent, IHasVelocity2D
     {

@@ -12,7 +12,7 @@ public static class PlayerSystem
         Right = 1 << 3, // 8
     }
 
-    public static void Move<V> (World.Entity entity, Store<V> velocityStore, PlayerMove playerMove, float playerSpeed)
+    public static void Move<V> (Entity entity, Store<V> velocityStore, PlayerMove playerMove, float playerSpeed)
     where V : struct, IComponent, IHasVelocity2D
     {
         float x = 0;

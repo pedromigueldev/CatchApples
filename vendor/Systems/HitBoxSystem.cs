@@ -2,7 +2,7 @@ namespace Cecs.Systems;
 public record struct Hitbox() : IComponent;
 public static class HitBoxSystem {
     public static void  ScanCollisions <P, G>
-    (this Store<Hitbox> hitBoxStore, Store<P> positionStore, Store<G> geometryStore, Dictionary<World.Entity, List<World.Entity>> hitPair, List<World.Entity> buffer, List<World.Entity> searchArea)
+    (this Store<Hitbox> hitBoxStore, Store<P> positionStore, Store<G> geometryStore, Dictionary<Entity, List<Entity>> hitPair, List<Entity> buffer, List<Entity> searchArea)
     where P : struct, IComponent, IHasPosition2D
     where G : struct, IComponent, IHasSize2D
     {

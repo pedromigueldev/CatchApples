@@ -7,6 +7,7 @@ public record World (Vector2 DefaultSize, int MaxValue = 10000)
     internal readonly List<Entity> Entities = new (MaxValue);
     internal List<IStore> Stores = new (15);
     internal List<IArchetpe> Archetypes = new (15);
+    internal List<IComponentGroup> ComponentGroups = new (15);
 }
 public static class WorldImpl
 {
@@ -74,6 +75,14 @@ public static class WorldImpl
 
 public static class Ext {
     public static List<Entity> GetEntitiesWith<T> (this List<Entity> entities, Store<T> store) where T : struct, IComponent
+    {
+        entities.Clear();
+        entities.EnsureCapacity(store.Entities.Count);
+        entities.AddRange(store.Entities);
+        return entities;
+    }
+
+    public static List<Entity> GetEntitiesWith<T> (this List<Entity> entities, Archetype<T> store) where T : struct, ITuple
     {
         entities.Clear();
         entities.EnsureCapacity(store.Entities.Count);

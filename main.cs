@@ -22,13 +22,15 @@ internal static class Program
 {
     const int screenWidth = 480;
     const int screenHeight = 800;
+
+    public record struct Render(Texture2D Texture2D) : IComponent;
     static readonly World world = new World(new(screenWidth, screenHeight), 100_000)
         .AddStore<Obtainable>()
         .AddStore<Player>()
         .AddStore<Hitbox>()
         .AddStore<Out>()
         .AddStore<Velocity>()
-        .AddArchetype<(Texture2D, Position, float)>()
+        .AddComponentGroup<Render, Position>()
     ;
     
     [STAThread]
@@ -39,16 +41,16 @@ internal static class Program
         Texture2D appleTexture = Raylib.LoadTexture("assets/apple.png");
         Texture2D basketTexture = Raylib.LoadTexture("assets/basket.png");
 
-        var Renderable = world.GetArchetype<(Texture2D, Position, float)>();
+        var Renderable = world.GetComponentGroup<Render, Position>();
 
         var apple = world.CreateEntity()
-                .AddEntityWith(Renderable, (appleTexture, new (new (10,10)), 1f))
+                .AddEntityWith(Renderable, new Render(appleTexture), new (new (10,10)))
                 .AddEntityWith(world.GetStore<Obtainable>())
                 .AddEntityWith(world.GetStore<Hitbox>())
                 .AddEntityWith(world.GetStore<Out>());
 
         var player = world.CreateEntity()
-                .AddEntityWith(Renderable, (basketTexture, new (new (100,100)), 1f))
+                .AddEntityWith(Renderable, new Render(basketTexture), new (new (100,100)))
                 .AddEntityWith(world.GetStore<Hitbox>());
 
         while (!Raylib.WindowShouldClose())
@@ -56,8 +58,6 @@ internal static class Program
             Raylib.BeginDrawing();
             Raylib.ClearBackground(Color.White);
             Raylib.DrawText("Hello, world!", 12, 12, 20, Color.Black);
-
-            RenderSystem.RenderEntities(Renderable, DrawTextureScaled);
 
             Raylib.EndDrawing();
         }

@@ -9,10 +9,20 @@ internal interface IArchetpe
     bool HasEntity(Entity entity);
 };
 
-public record Archetype<CT> (World World) : IArchetpe where CT : struct, ITuple
+public record Archetype<CT> : IArchetpe where CT : struct, ITuple
 {
-    internal readonly List<Entity> Entities = new (World.MaxValue); 
-    public List<CT> ComponentsTuple = new (World.MaxValue);
+    public World World;
+    internal readonly List<Entity> Entities; 
+    public List<CT> ComponentsTuple;
+    public Archetype (World world)
+    {
+        World = world;
+        Entities = new (world.MaxValue);
+        ComponentsTuple = new (world.MaxValue);
+
+
+
+    }
 
     public bool HasEntity(Entity entity)
     {
@@ -65,7 +75,7 @@ public static class WithImpl
 {
     extension (Entity entity)
     {
-        public Entity AddEntityWith<T>(Archetype<T> with, T component) where T : struct, ITuple
+        private Entity AddEntityWith<T>(Archetype<T> with, T component) where T : struct, ITuple
         {
             with.AddEntity(entity, component);
             return entity;

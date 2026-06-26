@@ -29,21 +29,21 @@ public record struct Velocity(Vec2 Point) : IComponent, IHasVelocity2D;
 public record struct Geometry(Vec2 Point) : IComponent, IHasSize2D;
 public static class GeometrySystem
 {
-    public static void Move <P, V>
-    (Store<P> positionStore, Store<V> velocityStore, List<Entity> workBuffer)
-    where P : struct, IComponent, IHasPosition2D
-    where V : struct, IComponent, IHasVelocity2D
-    {
-        workBuffer.GetEntitiesWith(velocityStore).And(positionStore);
-        for (int i = 0; i < workBuffer.Count; i++)
-        {
-            var pos = positionStore.Components[workBuffer[i].Id].Point;
-            var acc = velocityStore.Components[workBuffer[i].Id].Point;
-            var newPos = pos + acc;
-            positionStore.Components[workBuffer[i].Id] = positionStore.Components[workBuffer[i].Id] with
-            {
-                Point = newPos
-            };
-        }
-    }
+    // public static void Move <P, V>
+    // (Store<P> positionStore, Store<V> velocityStore, List<Entity> workBuffer)
+    // where P : struct, IComponent, IHasPosition2D
+    // where V : struct, IComponent, IHasVelocity2D
+    // {
+    //     workBuffer.GetEntitiesWith(velocityStore).And(positionStore);
+    //     for (int i = 0; i < workBuffer.Count; i++)
+    //     {
+    //         var pos = positionStore.Components[workBuffer[i].Id].Point;
+    //         var acc = velocityStore.Components[workBuffer[i].Id].Point;
+    //         var newPos = pos + acc;
+    //         positionStore.Components[workBuffer[i].Id] = positionStore.Components[workBuffer[i].Id] with
+    //         {
+    //             Point = newPos
+    //         };
+    //     }
+    // }
 }

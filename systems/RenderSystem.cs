@@ -1,23 +1,18 @@
 using cs_ecs;
+using Raylib_cs;
 
 namespace CatchApple;
+public record struct Render(Texture2D Texture2D) : IComponent;
 public delegate void RendereableCallBack<T, P> (T rendereable, P position, float scale)
     where P : struct, IComponent, IHasPosition2D;
 
 public static class RenderSystem
 {
-    public static void RenderEntities<T, P>(
-        Archetype<(T Texture2D, P Size, float Scale)> renderable,
-        RendereableCallBack<T, P> rendereableCallBack
-    )
-    where P : struct, IComponent, IHasPosition2D
+    public static void RenderEntities(With<Render, Position> renderable, RendereableCallBack<Render, Position> rendereableCallBack)
     {
-        for (int i = 0; i < renderable.Entities.Count; i++)
+        foreach (var (render, position, index) in renderable)
         {
-            var tex = renderable.ComponentsTuple[i].Texture2D;
-            var pos = renderable.ComponentsTuple[i].Size;
-            var scl = renderable.ComponentsTuple[i].Scale;
-            rendereableCallBack(tex, pos, scl);
+            rendereableCallBack(render, position, 1f);   
         }
     }
 }

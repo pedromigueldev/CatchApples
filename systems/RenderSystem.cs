@@ -1,4 +1,4 @@
-using Cecs;
+using cs_ecs;
 
 namespace CatchApple;
 public delegate void RendereableCallBack<T, P> (T rendereable, P position, float scale)

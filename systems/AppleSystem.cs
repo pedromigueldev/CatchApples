@@ -1,6 +1,6 @@
 
 
-using Cecs;
+using cs_ecs;
 
 namespace CatchApple;
 public readonly record struct Obtainable() : IComponent;

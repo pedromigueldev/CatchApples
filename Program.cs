@@ -1,23 +1,7 @@
-#!/usr/bin/dotnet run
-
-#:package Raylib-cs@8.0.0
-#:property OutputPath=./output
-#:property TargetFramework=net11.0
-#:property AppendTargetFrameworkToOutputPath=false
-#:property IlcOptimizationPreference=Speed
-#:property WarningsAsErrors=nullable
-#:property ImplicitUsings=enable
-#:property OptimizationPreference=Speed
-//#:property Optimize=true // removes debug info
-
-#:include vendor/**/*.cs
-#:include systems/*.cs
-#:include build.cs
-
-using CatchApple;
-using Cecs;
+using cs_ecs;
 using Raylib_cs;
 
+namespace CatchApple;
 internal static class Program
 {
     const int screenWidth = 480;

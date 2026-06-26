@@ -1,4 +1,4 @@
-using Cecs;
+using cs_ecs;
 
 namespace CatchApple;
 public record struct Hitbox() : IComponent;
